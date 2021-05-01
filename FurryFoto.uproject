@@ -2,5 +2,12 @@
 	"FileVersion": 3,
 	"EngineAssociation": "4.20",
 	"Category": "",
-	"Description": ""
+	"Description": "",
+	"Plugins": [
+		{
+			"Name": "StickyNotes",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/29a0614549e149989ab0808172f864c9"
+		}
+	]
 }
