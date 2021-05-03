@@ -1,9 +1,5 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
-#include "GitSourceControlPrivatePCH.h"
 #include "GitSourceControlModule.h"
 #include "Misc/App.h"
 #include "Modules/ModuleManager.h"
@@ -20,16 +16,14 @@ static TSharedRef<IGitSourceControlWorker, ESPMode::ThreadSafe> CreateWorker()
 
 void FGitSourceControlModule::StartupModule()
 {
-	// Register our operations (implemented in GitSourceControlOperations.cpp by subclassing from Engine\Source\Developer\SourceControl\Public\SourceControlOperations.h)
+	// Register our operations
 	GitSourceControlProvider.RegisterWorker( "Connect", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitConnectWorker> ) );
-	// Note: this provider uses the "CheckOut" command only with Git LFS 2 "lock" command, since Git itself has no lock command (all tracked files in the working copy are always already checked-out).
-	GitSourceControlProvider.RegisterWorker( "CheckOut", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitCheckOutWorker> ) );
+	// Note: this provider does not uses the "CheckOut" command, which is a Perforce "lock", as Git has no lock command (all tracked files in the working copy are always already checked-out).
 	GitSourceControlProvider.RegisterWorker( "UpdateStatus", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitUpdateStatusWorker> ) );
 	GitSourceControlProvider.RegisterWorker( "MarkForAdd", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitMarkForAddWorker> ) );
 	GitSourceControlProvider.RegisterWorker( "Delete", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitDeleteWorker> ) );
 	GitSourceControlProvider.RegisterWorker( "Revert", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitRevertWorker> ) );
 	GitSourceControlProvider.RegisterWorker( "Sync", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitSyncWorker> ) );
-	GitSourceControlProvider.RegisterWorker( "Push", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitPushWorker> ) );
 	GitSourceControlProvider.RegisterWorker( "CheckIn", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitCheckInWorker> ) );
 	GitSourceControlProvider.RegisterWorker( "Copy", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitCopyWorker> ) );
 	GitSourceControlProvider.RegisterWorker( "Resolve", FGetGitSourceControlWorker::CreateStatic( &CreateWorker<FGitResolveWorker> ) );

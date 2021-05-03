@@ -1,7 +1,4 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -32,19 +29,19 @@ public:
 
 private:
 
-	/** Delegates to get Git binary path from/to settings */
-	FText GetBinaryPathText() const;
-	void OnBinaryPathTextCommited(const FText& InText, ETextCommit::Type InCommitType) const;
+	/** Delegate to get binary path from settings */
+	FString GetBinaryPathString() const;
+
+	/** Delegate to commit repository text to settings */
+	void OnBinaryPathPicked(const FString & PickedPath) const;
 
 	/** Delegate to get repository root, user name and email from provider */
 	FText GetPathToRepositoryRoot() const;
 	FText GetUserName() const;
 	FText GetUserEmail() const;
 
-	EVisibility MustInitializeGitRepository() const;
-	bool CanInitializeGitRepository() const;
+	EVisibility CanInitializeGitRepository() const;
 	bool CanInitializeGitLfs() const;
-	bool CanUseGitLfsLocking() const;
 
 	/** Delegate to initialize a new Git repository */
 	FReply OnClickedInitializeGitRepository();
@@ -52,25 +49,10 @@ private:
 	void OnCheckedCreateGitIgnore(ECheckBoxState NewCheckedState);
 	bool bAutoCreateGitIgnore;
 
-	void OnCheckedCreateReadme(ECheckBoxState NewCheckedState);
-	bool GetAutoCreateReadme() const;
-	bool bAutoCreateReadme;
-	void OnReadmeContentCommited(const FText& InText, ETextCommit::Type InCommitType);
-	FText GetReadmeContent() const;
-	FText ReadmeContent;
-
 	void OnCheckedCreateGitAttributes(ECheckBoxState NewCheckedState);
 	bool bAutoCreateGitAttributes;
 
-	void OnCheckedUseGitLfsLocking(ECheckBoxState NewCheckedState);
-	ECheckBoxState IsUsingGitLfsLocking() const;
-	bool GetIsUsingGitLfsLocking() const;
-
-	void OnLfsUserNameCommited(const FText& InText, ETextCommit::Type InCommitType);
-	FText GetLfsUserName() const;
-
 	void OnCheckedInitialCommit(ECheckBoxState NewCheckedState);
-	bool GetAutoInitialCommit() const;
 	bool bAutoInitialCommit;
 	void OnInitialCommitMessageCommited(const FText& InText, ETextCommit::Type InCommitType);
 	FText GetInitialCommitMessage() const;

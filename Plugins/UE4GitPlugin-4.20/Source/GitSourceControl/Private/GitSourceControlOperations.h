@@ -1,27 +1,10 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "IGitSourceControlWorker.h"
 #include "GitSourceControlState.h"
-
-#include "ISourceControlOperation.h"
-
-/**
- * Internal operation used to push local commits to configured remote origin
-*/
-class FGitPush : public ISourceControlOperation
-{
-public:
-	// ISourceControlOperation interface
-	virtual FName GetName() const override;
-
-	virtual FText GetInProgressString() const override;
-};
 
 /** Called when first activated on a project, and then at project load time.
  *  Look for the root directory of the git repository (where the ".git/" subdirectory is located). */
@@ -39,22 +22,7 @@ public:
 	TArray<FGitSourceControlState> States;
 };
 
-/** Lock (check-out) a set of files using Git LFS 2. */
-class FGitCheckOutWorker : public IGitSourceControlWorker
-{
-public:
-	virtual ~FGitCheckOutWorker() {}
-	// IGitSourceControlWorker interface
-	virtual FName GetName() const override;
-	virtual bool Execute(class FGitSourceControlCommand& InCommand) override;
-	virtual bool UpdateStates() const override;
-
-public:
-	/** Temporary states for results */
-	TArray<FGitSourceControlState> States;
-};
-
-/** Commit (check-in) a set of files to the local depot. */
+/** Commit (check-in) a set of file to the local depot. */
 class FGitCheckInWorker : public IGitSourceControlWorker
 {
 public:
@@ -95,7 +63,7 @@ public:
 	virtual bool UpdateStates() const override;
 
 public:
-	/** Temporary states for results */
+	/** Map of filenames to Git state */
 	TArray<FGitSourceControlState> States;
 };
 
@@ -110,11 +78,11 @@ public:
 	virtual bool UpdateStates() const override;
 
 public:
-	/** Temporary states for results */
+	/** Map of filenames to Git state */
 	TArray<FGitSourceControlState> States;
 };
 
-/** Git pull --rebase to update branch from its configured remote */
+/** Git pull --rebase to update branch from its configure remote */
 class FGitSyncWorker : public IGitSourceControlWorker
 {
 public:
@@ -125,19 +93,8 @@ public:
 	virtual bool UpdateStates() const override;
 
 public:
-	/** Temporary states for results */
+	/// Map of filenames to Git state
 	TArray<FGitSourceControlState> States;
-};
-
-/** Git push to publish branch for its configured remote */
-class FGitPushWorker : public IGitSourceControlWorker
-{
-public:
-	virtual ~FGitPushWorker() {}
-	// IGitSourceControlWorker interface
-	virtual FName GetName() const override;
-	virtual bool Execute(class FGitSourceControlCommand& InCommand) override;
-	virtual bool UpdateStates() const override;
 };
 
 /** Get source control status of files on local working copy. */
@@ -170,7 +127,7 @@ public:
 
 public:
 	/** Temporary states for results */
-	TArray<FGitSourceControlState> States;
+	TArray<FGitSourceControlState> OutStates;
 };
 
 /** git add to mark a conflict as resolved */

@@ -1,9 +1,5 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
-#include "GitSourceControlPrivatePCH.h"
 #include "GitSourceControlRevision.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
@@ -15,7 +11,7 @@
 
 bool FGitSourceControlRevision::Get( FString& InOutFilename ) const
 {
-	FGitSourceControlModule& GitSourceControl = FModuleManager::GetModuleChecked<FGitSourceControlModule>("GitSourceControl");
+	FGitSourceControlModule& GitSourceControl = FModuleManager::LoadModuleChecked<FGitSourceControlModule>("GitSourceControl");
 	const FString PathToGitBinary = GitSourceControl.AccessSettings().GetBinaryPath();
 	const FString PathToRepositoryRoot = GitSourceControl.GetProvider().GetPathToRepositoryRoot();
 

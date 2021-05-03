@@ -1,7 +1,4 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -35,18 +32,18 @@ public:
 	/**
 	 * This method is also used to tell the object to cleanup but not before
 	 * the object has finished it's work.
-	 */ 
+	 */
 	virtual void DoThreadedWork() override;
+
+	/** Save any results and call any registered callbacks. */
+	ECommandResult::Type ReturnResults();
 
 public:
 	/** Path to the Git binary */
 	FString PathToGitBinary;
 
-	/** Path to the root of the Git repository: can be the GameDir itself, or any parent directory (found by the "Connect" operation) */
+	/** Path to the root of the Git repository: can be the ProjectDir itself, or any parent directory (found by the "Connect" operation) */
 	FString PathToRepositoryRoot;
-
-	/** Tell if using the Git LFS file Locking workflow */
-	bool bUsingGitLfsLocking;
 
 	/** Operation we want to perform - contains outward-facing parameters & results */
 	TSharedRef<class ISourceControlOperation, ESPMode::ThreadSafe> Operation;
@@ -63,15 +60,6 @@ public:
 	/**If true, the source control command succeeded*/
 	bool bCommandSuccessful;
 
-	/** TODO LFS If true, the source control connection was dropped while this command was being executed*/
-	bool bConnectionDropped;
-
-	/** Current Commit full SHA1 */
-	FString CommitId;
-
-	/** Current Commit description's Summary */
-	FString CommitSummary;
-
 	/** If true, this command will be automatically cleaned up in Tick() */
 	bool bAutoDelete;
 
@@ -79,11 +67,11 @@ public:
 	EConcurrency::Type Concurrency;
 
 	/** Files to perform this operation on */
-	TArray<FString> Files;
+	TArray< FString > Files;
 
-	/**Info and/or warning message storage*/
-	TArray<FString> InfoMessages;
+	/**Info and/or warning message message storage*/
+	TArray< FString > InfoMessages;
 
 	/**Potential error message storage*/
-	TArray<FString> ErrorMessages;
+	TArray< FString > ErrorMessages;
 };

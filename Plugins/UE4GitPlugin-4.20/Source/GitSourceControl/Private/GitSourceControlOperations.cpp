@@ -1,9 +1,5 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
-#include "GitSourceControlPrivatePCH.h"
 #include "GitSourceControlOperations.h"
 #include "Misc/Paths.h"
 #include "Modules/ModuleManager.h"
@@ -15,17 +11,6 @@
 
 #define LOCTEXT_NAMESPACE "GitSourceControl"
 
-FName FGitPush::GetName() const
-{
-	return "Push";
-}
-
-FText FGitPush::GetInProgressString() const
-{
-	return LOCTEXT("SourceControl_Push", "Pushing local commits to remote origin...");
-}
-
-
 FName FGitConnectWorker::GetName() const
 {
 	return "Connect";
@@ -34,35 +19,24 @@ FName FGitConnectWorker::GetName() const
 bool FGitConnectWorker::Execute(FGitSourceControlCommand& InCommand)
 {
 	check(InCommand.Operation->GetName() == GetName());
-	TSharedRef<FConnect, ESPMode::ThreadSafe> Operation = StaticCastSharedRef<FConnect>(InCommand.Operation);
 
 	// Check Git Availability
-	if((InCommand.PathToGitBinary.Len() > 0) && GitSourceControlUtils::CheckGitAvailability(InCommand.PathToGitBinary))
+	if (0 < InCommand.PathToGitBinary.Len() && GitSourceControlUtils::CheckGitAvailability(InCommand.PathToGitBinary))
 	{
 		// Now update the status of assets in Content/ directory and also Config files
 		TArray<FString> ProjectDirs;
 		ProjectDirs.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()));
 		ProjectDirs.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir()));
-		InCommand.bCommandSuccessful = GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, ProjectDirs, InCommand.ErrorMessages, States);
+		InCommand.bCommandSuccessful = GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, ProjectDirs, InCommand.ErrorMessages, States);
 		if(!InCommand.bCommandSuccessful || InCommand.ErrorMessages.Num() > 0)
 		{
-			Operation->SetErrorText(LOCTEXT("NotAGitRepository", "Failed to enable Git source control. You need to initialize the project as a Git repository first."));
+			StaticCastSharedRef<FConnect>(InCommand.Operation)->SetErrorText(LOCTEXT("NotAGitRepository", "Failed to enable Git source control. You need to initialize the project as a Git repository first."));
 			InCommand.bCommandSuccessful = false;
-		}
-		else
-		{
-			GitSourceControlUtils::GetCommitInfo(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.CommitId, InCommand.CommitSummary);
-
-			if(InCommand.bUsingGitLfsLocking)
-			{
-				// Check server connection by checking lock status (when using Git LFS file Locking worflow)
-				InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("lfs locks"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), TArray<FString>(), InCommand.InfoMessages, InCommand.ErrorMessages);
-			}
 		}
 	}
 	else
 	{
-		Operation->SetErrorText(LOCTEXT("GitNotFound", "Failed to enable Git source control. You need to install Git and specify a valid path to git executable."));
+		StaticCastSharedRef<FConnect>(InCommand.Operation)->SetErrorText(LOCTEXT("GitNotFound", "Failed to enable Git source control. You need to install Git and specify a valid path to git executable."));
 		InCommand.bCommandSuccessful = false;
 	}
 
@@ -70,43 +44,6 @@ bool FGitConnectWorker::Execute(FGitSourceControlCommand& InCommand)
 }
 
 bool FGitConnectWorker::UpdateStates() const
-{
-	return GitSourceControlUtils::UpdateCachedStates(States);
-}
-
-FName FGitCheckOutWorker::GetName() const
-{
-	return "CheckOut";
-}
-
-bool FGitCheckOutWorker::Execute(FGitSourceControlCommand& InCommand)
-{
-	check(InCommand.Operation->GetName() == GetName());
-
-	if(InCommand.bUsingGitLfsLocking)
-	{
-		// lock files: execute the LFS command on relative filenames
-		InCommand.bCommandSuccessful = true;
-		const TArray<FString> RelativeFiles = GitSourceControlUtils::RelativeFilenames(InCommand.Files, InCommand.PathToRepositoryRoot);
-		for(const auto& RelativeFile : RelativeFiles)
-		{
-			TArray<FString> OneFile;
-			OneFile.Add(RelativeFile);
-			InCommand.bCommandSuccessful &= GitSourceControlUtils::RunCommand(TEXT("lfs lock"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), OneFile, InCommand.InfoMessages, InCommand.ErrorMessages);
-		}
-
-		// now update the status of our files
-		GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, InCommand.Files, InCommand.ErrorMessages, States);
-	}
-	else
-	{
-		InCommand.bCommandSuccessful = false;
-	}
-
-	return InCommand.bCommandSuccessful;
-}
-
-bool FGitCheckOutWorker::UpdateStates() const
 {
 	return GitSourceControlUtils::UpdateCachedStates(States);
 }
@@ -119,27 +56,6 @@ static FText ParseCommitResults(const TArray<FString>& InResults)
 		return FText::Format(LOCTEXT("CommitMessage", "Commited {0}."), FText::FromString(FirstLine));
 	}
 	return LOCTEXT("CommitMessageUnknown", "Submitted revision.");
-}
-
-// Get Locked Files (that is, CheckedOut files, not Added ones)
-const TArray<FString> GetLockedFiles(const TArray<FString>& InFiles)
-{
-	TArray<FString> LockedFiles;
-
-	FGitSourceControlModule& GitSourceControl = FModuleManager::GetModuleChecked<FGitSourceControlModule>("GitSourceControl");
-	FGitSourceControlProvider& Provider = GitSourceControl.GetProvider();
-
-	TArray<TSharedRef<ISourceControlState, ESPMode::ThreadSafe>> LocalStates;
-	Provider.GetState(InFiles, LocalStates, EStateCacheUsage::Use);
-	for(const auto& State : LocalStates)
-	{
-		if(State->IsCheckedOut())
-		{
-			LockedFiles.Add(State->GetFilename());
-		}
-	}
-
-	return LockedFiles;
 }
 
 FName FGitCheckInWorker::GetName() const
@@ -172,44 +88,22 @@ bool FGitCheckInWorker::Execute(FGitSourceControlCommand& InCommand)
 
 			TArray<TSharedRef<ISourceControlState, ESPMode::ThreadSafe>> LocalStates;
 			Provider.GetState(InCommand.Files, LocalStates, EStateCacheUsage::Use);
-			for(const auto& State : LocalStates)
+			for (const auto& State : LocalStates)
 			{
-				if(State->IsDeleted())
+				if (State->IsDeleted())
 				{
 					Provider.RemoveFileFromCache(State->GetFilename());
 				}
 			}
 
 			Operation->SetSuccessMessage(ParseCommitResults(InCommand.InfoMessages));
-			UE_LOG(LogSourceControl, Log, TEXT("commit successful: %s"), *InCommand.InfoMessages[0]);
-
-			// git-lfs: push and unlock files
-			if(InCommand.bUsingGitLfsLocking && InCommand.bCommandSuccessful)
-			{
-				InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("push origin HEAD"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), TArray<FString>(), InCommand.InfoMessages, InCommand.ErrorMessages);
-				if(InCommand.bCommandSuccessful)
-				{
-					// unlock files: execute the LFS command on relative filenames
-					// (unlock only locked files, that is, not Added files)
-					const TArray<FString> LockedFiles = GetLockedFiles(InCommand.Files);
-					if(LockedFiles.Num() > 0)
-					{
-						const TArray<FString> RelativeFiles = GitSourceControlUtils::RelativeFilenames(LockedFiles, InCommand.PathToRepositoryRoot);
-						for(const auto& RelativeFile : RelativeFiles)
-						{
-							TArray<FString> OneFile;
-							OneFile.Add(RelativeFile);
-							GitSourceControlUtils::RunCommand(TEXT("lfs unlock"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), OneFile, InCommand.InfoMessages, InCommand.ErrorMessages);
-						}
-					}
-				}
-			}
+			const FString Message = (InCommand.InfoMessages.Num() > 0) ? InCommand.InfoMessages[0] : TEXT("");
+			UE_LOG(LogSourceControl, Log, TEXT("commit successful: %s"), *Message);
 		}
 	}
 
 	// now update the status of our files
-	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, InCommand.Files, InCommand.ErrorMessages, States);
-	GitSourceControlUtils::GetCommitInfo(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.CommitId, InCommand.CommitSummary);
+	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.Files, InCommand.ErrorMessages, States);
 
 	return InCommand.bCommandSuccessful;
 }
@@ -231,7 +125,7 @@ bool FGitMarkForAddWorker::Execute(FGitSourceControlCommand& InCommand)
 	InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("add"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), InCommand.Files, InCommand.InfoMessages, InCommand.ErrorMessages);
 
 	// now update the status of our files
-	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, InCommand.Files, InCommand.ErrorMessages, States);
+	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.Files, InCommand.ErrorMessages, States);
 
 	return InCommand.bCommandSuccessful;
 }
@@ -253,7 +147,7 @@ bool FGitDeleteWorker::Execute(FGitSourceControlCommand& InCommand)
 	InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("rm"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), InCommand.Files, InCommand.InfoMessages, InCommand.ErrorMessages);
 
 	// now update the status of our files
-	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, InCommand.Files, InCommand.ErrorMessages, States);
+	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.Files, InCommand.ErrorMessages, States);
 
 	return InCommand.bCommandSuccessful;
 }
@@ -270,10 +164,8 @@ void GetMissingVsExistingFiles(const TArray<FString>& InFiles, TArray<FString>& 
 	FGitSourceControlModule& GitSourceControl = FModuleManager::GetModuleChecked<FGitSourceControlModule>("GitSourceControl");
 	FGitSourceControlProvider& Provider = GitSourceControl.GetProvider();
 
-	const TArray<FString> Files = (InFiles.Num() > 0) ? (InFiles) : (Provider.GetFilesInCache());
-
 	TArray<TSharedRef<ISourceControlState, ESPMode::ThreadSafe>> LocalStates;
-	Provider.GetState(Files, LocalStates, EStateCacheUsage::Use);
+	Provider.GetState(InFiles, LocalStates, EStateCacheUsage::Use);
 	for(const auto& State : LocalStates)
 	{
 		if(FPaths::FileExists(State->GetFilename()))
@@ -282,7 +174,7 @@ void GetMissingVsExistingFiles(const TArray<FString>& InFiles, TArray<FString>& 
 			{
 				OutAllExistingFiles.Add(State->GetFilename());
 			}
-			else if(State->IsModified())
+			else
 			{
 				OutOtherThanAddedExistingFiles.Add(State->GetFilename());
 				OutAllExistingFiles.Add(State->GetFilename());
@@ -308,42 +200,24 @@ bool FGitRevertWorker::Execute(FGitSourceControlCommand& InCommand)
 	TArray<FString> OtherThanAddedExistingFiles;
 	GetMissingVsExistingFiles(InCommand.Files, MissingFiles, AllExistingFiles, OtherThanAddedExistingFiles);
 
-	InCommand.bCommandSuccessful = true;
 	if(MissingFiles.Num() > 0)
 	{
 		// "Added" files that have been deleted needs to be removed from source control
-		InCommand.bCommandSuccessful &= GitSourceControlUtils::RunCommand(TEXT("rm"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), MissingFiles, InCommand.InfoMessages, InCommand.ErrorMessages);
+		InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("rm"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), MissingFiles, InCommand.InfoMessages, InCommand.ErrorMessages);
 	}
 	if(AllExistingFiles.Num() > 0)
 	{
 		// reset any changes already added to the index
-		InCommand.bCommandSuccessful &= GitSourceControlUtils::RunCommand(TEXT("reset"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), AllExistingFiles, InCommand.InfoMessages, InCommand.ErrorMessages);
+		InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("reset"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), AllExistingFiles, InCommand.InfoMessages, InCommand.ErrorMessages);
 	}
 	if(OtherThanAddedExistingFiles.Num() > 0)
 	{
 		// revert any changes in working copy (this would fails if the asset was in "Added" state, since after "reset" it is now "untracked")
-		InCommand.bCommandSuccessful &= GitSourceControlUtils::RunCommand(TEXT("checkout"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), OtherThanAddedExistingFiles, InCommand.InfoMessages, InCommand.ErrorMessages);
-	}
-
-	if(InCommand.bUsingGitLfsLocking)
-	{
-		// unlock files: execute the LFS command on relative filenames
-		// (unlock only locked files, that is, not Added files)
-		const TArray<FString> LockedFiles = GetLockedFiles(OtherThanAddedExistingFiles);
-		if(LockedFiles.Num() > 0)
-		{
-			const TArray<FString> RelativeFiles = GitSourceControlUtils::RelativeFilenames(LockedFiles, InCommand.PathToRepositoryRoot);
-			for(const auto& RelativeFile : RelativeFiles)
-			{
-				TArray<FString> OneFile;
-				OneFile.Add(RelativeFile);
-				GitSourceControlUtils::RunCommand(TEXT("lfs unlock"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), OneFile, InCommand.InfoMessages, InCommand.ErrorMessages);
-			}
-		}
+		InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("checkout"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), OtherThanAddedExistingFiles, InCommand.InfoMessages, InCommand.ErrorMessages);
 	}
 
 	// now update the status of our files
-	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, AllExistingFiles, InCommand.ErrorMessages, States);
+	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.Files, InCommand.ErrorMessages, States);
 
 	return InCommand.bCommandSuccessful;
 }
@@ -355,55 +229,28 @@ bool FGitRevertWorker::UpdateStates() const
 
 FName FGitSyncWorker::GetName() const
 {
-	return "Sync";
+   return "Sync";
 }
 
 bool FGitSyncWorker::Execute(FGitSourceControlCommand& InCommand)
 {
-	// pull the branch to get remote changes by rebasing any local commits (not merging them to avoid complex graphs)
-	// (this cannot work if any local files are modified but not commited)
-	TArray<FString> Parameters;
-	Parameters.Add(TEXT("--rebase"));
-	Parameters.Add(TEXT("origin"));
-	Parameters.Add(TEXT("HEAD"));
-	InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("pull"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, Parameters, TArray<FString>(), InCommand.InfoMessages, InCommand.ErrorMessages);
+   // pull the branch to get remote changes by rebasing any local commits (not merging them to avoid complex graphs)
+   // (this cannot work if any local files are modified but not commited)
+   {
+      TArray<FString> Parameters;
+      Parameters.Add(TEXT("--rebase origin HEAD"));
+      InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("pull"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, Parameters, TArray<FString>(), InCommand.InfoMessages, InCommand.ErrorMessages);
+   }
 
-	// now update the status of our files
-	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, InCommand.Files, InCommand.ErrorMessages, States);
-	GitSourceControlUtils::GetCommitInfo(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.CommitId, InCommand.CommitSummary);
+   // now update the status of our files
+   GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.Files, InCommand.ErrorMessages, States);
 
-	return InCommand.bCommandSuccessful;
+   return InCommand.bCommandSuccessful;
 }
 
 bool FGitSyncWorker::UpdateStates() const
 {
-	return GitSourceControlUtils::UpdateCachedStates(States);
-}
-
-
-FName FGitPushWorker::GetName() const
-{
-	return "Push";
-}
-
-bool FGitPushWorker::Execute(FGitSourceControlCommand& InCommand)
-{
-	// push the branch to its default remote
-	// (works only if the default remote "origin" is set and does not require authentication)
-	TArray<FString> Parameters;
-	Parameters.Add(TEXT("--set-upstream"));
-	Parameters.Add(TEXT("origin"));
-	Parameters.Add(TEXT("HEAD"));
-	InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("push"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, Parameters, TArray<FString>(), InCommand.InfoMessages, InCommand.ErrorMessages);
-
-	// NOTE: no need to update status of our files
-
-	return InCommand.bCommandSuccessful;
-}
-
-bool FGitPushWorker::UpdateStates() const
-{
-	return false;
+   return GitSourceControlUtils::UpdateCachedStates(States);
 }
 
 FName FGitUpdateStatusWorker::GetName() const
@@ -419,7 +266,7 @@ bool FGitUpdateStatusWorker::Execute(FGitSourceControlCommand& InCommand)
 
 	if(InCommand.Files.Num() > 0)
 	{
-		InCommand.bCommandSuccessful = GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, InCommand.Files, InCommand.ErrorMessages, States);
+		InCommand.bCommandSuccessful = GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.Files, InCommand.ErrorMessages, States);
 		GitSourceControlUtils::RemoveRedundantErrors(InCommand, TEXT("' is outside repository"));
 
 		if(Operation->ShouldUpdateHistory())
@@ -442,14 +289,14 @@ bool FGitUpdateStatusWorker::Execute(FGitSourceControlCommand& InCommand)
 	}
 	else
 	{
-		// no path provided: only update the status of assets in Content/ directory and also Config files
-		TArray<FString> ProjectDirs;
-		ProjectDirs.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir()));
-		ProjectDirs.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectConfigDir()));
-		InCommand.bCommandSuccessful = GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, ProjectDirs, InCommand.ErrorMessages, States);
+		// Perforce "opened files" are those that have been modified (or added/deleted): that is what we get with a simple Git status from the root
+		if(Operation->ShouldGetOpenedOnly())
+		{
+			TArray<FString> Files;
+			Files.Add(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()));
+			InCommand.bCommandSuccessful = GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, Files, InCommand.ErrorMessages, States);
+		}
 	}
-
-	GitSourceControlUtils::GetCommitInfo(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.CommitId, InCommand.CommitSummary);
 
 	// don't use the ShouldUpdateModifiedState() hint here as it is specific to Perforce: the above normal Git status has already told us this information (like Git and Mercurial)
 
@@ -460,18 +307,15 @@ bool FGitUpdateStatusWorker::UpdateStates() const
 {
 	bool bUpdated = GitSourceControlUtils::UpdateCachedStates(States);
 
-	FGitSourceControlModule& GitSourceControl = FModuleManager::GetModuleChecked<FGitSourceControlModule>( "GitSourceControl" );
+	FGitSourceControlModule& GitSourceControl = FModuleManager::LoadModuleChecked<FGitSourceControlModule>( "GitSourceControl" );
 	FGitSourceControlProvider& Provider = GitSourceControl.GetProvider();
-	const bool bUsingGitLfsLocking = GitSourceControl.AccessSettings().IsUsingGitLfsLocking();
-
-	const FDateTime Now = FDateTime::Now();
 
 	// add history, if any
 	for(const auto& History : Histories)
 	{
-		TSharedRef<FGitSourceControlState, ESPMode::ThreadSafe> State = Provider.GetStateInternal(History.Key, bUsingGitLfsLocking);
+		TSharedRef<FGitSourceControlState, ESPMode::ThreadSafe> State = Provider.GetStateInternal(History.Key);
 		State->History = History.Value;
-		State->TimeStamp = Now;
+		State->TimeStamp = FDateTime::Now();
 		bUpdated = true;
 	}
 
@@ -498,7 +342,7 @@ bool FGitCopyWorker::Execute(FGitSourceControlCommand& InCommand)
 
 bool FGitCopyWorker::UpdateStates() const
 {
-	return GitSourceControlUtils::UpdateCachedStates(States);
+	return GitSourceControlUtils::UpdateCachedStates(OutStates);
 }
 
 FName FGitResolveWorker::GetName() const
@@ -511,11 +355,13 @@ bool FGitResolveWorker::Execute( class FGitSourceControlCommand& InCommand )
 	check(InCommand.Operation->GetName() == GetName());
 
 	// mark the conflicting files as resolved:
-	TArray<FString> Results;
-	InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("add"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), InCommand.Files, Results, InCommand.ErrorMessages);
+	{
+		TArray<FString> Results;
+		InCommand.bCommandSuccessful = GitSourceControlUtils::RunCommand(TEXT("add"), InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, TArray<FString>(), InCommand.Files, Results, InCommand.ErrorMessages);
+	}
 
 	// now update the status of our files
-	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.bUsingGitLfsLocking, InCommand.Files, InCommand.ErrorMessages, States);
+	GitSourceControlUtils::RunUpdateStatus(InCommand.PathToGitBinary, InCommand.PathToRepositoryRoot, InCommand.Files, InCommand.ErrorMessages, States);
 
 	return InCommand.bCommandSuccessful;
 }

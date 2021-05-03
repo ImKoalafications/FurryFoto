@@ -1,7 +1,4 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -59,8 +56,8 @@ bool CheckGitAvailability(const FString& InPathToGitBinary, FGitVersion* OutVers
 
 /** 
  * Check git for various optional capabilities by various means.
- * @param InPathToGitBinary	The path to the Git binary
- * @param OutGitVersion		If provided, populate with the git version parsed from "version" command
+ * @param InPathToGitBinary		The path to the Git binary
+ * @param OutGitVersion			If provided, populate with the git version parsed from "version" command
  */
 void FindGitCapabilities(const FString& InPathToGitBinary, FGitVersion *OutVersion);
 
@@ -96,17 +93,6 @@ void GetUserConfig(const FString& InPathToGitBinary, const FString& InRepository
  * @returns true if the command succeeded and returned no errors
  */
 bool GetBranchName(const FString& InPathToGitBinary, const FString& InRepositoryRoot, FString& OutBranchName);
-
-/**
- * Get Git current commit details
- * @param	InPathToGitBinary	The path to the Git binary
- * @param	InRepositoryRoot	The Git repository from where to run the command - usually the Game directory
- * @param	OutCommitId			Current Commit full SHA1
- * @param	OutCommitSummary	Current Commit description's Summary
- * @returns true if the command succeeded and returned no errors
- */
-bool GetCommitInfo(const FString& InPathToGitBinary, const FString& InRepositoryRoot, FString& OutCommitId, FString& OutCommitSummary);
-
 
 /**
  * Get the URL of the "origin" defaut remote server
@@ -148,12 +134,11 @@ bool RunCommit(const FString& InPathToGitBinary, const FString& InRepositoryRoot
  *
  * @param	InPathToGitBinary	The path to the Git binary
  * @param	InRepositoryRoot	The Git repository from where to run the command - usually the Game directory (can be empty)
- * @param	InUsingLfsLocking	Tells if using the Git LFS file Locking workflow
  * @param	InFiles				The files to be operated on
  * @param	OutErrorMessages	Any errors (from StdErr) as an array per-line
  * @returns true if the command succeeded and returned no errors
  */
-bool RunUpdateStatus(const FString& InPathToGitBinary, const FString& InRepositoryRoot, const bool InUsingLfsLocking, const TArray<FString>& InFiles, TArray<FString>& OutErrorMessages, TArray<FGitSourceControlState>& OutStates);
+bool RunUpdateStatus(const FString& InPathToGitBinary, const FString& InRepositoryRoot, const TArray<FString>& InFiles, TArray<FString>& OutErrorMessages, TArray<FGitSourceControlState>& OutStates);
 
 /**
  * Run a Git "cat-file" command to dump the binary content of a revision into a file.
@@ -177,14 +162,6 @@ bool RunDumpToFile(const FString& InPathToGitBinary, const FString& InRepository
  * @param	OutHistory			The history of the file
  */
 bool RunGetHistory(const FString& InPathToGitBinary, const FString& InRepositoryRoot, const FString& InFile, bool bMergeConflict, TArray<FString>& OutErrorMessages, TGitSourceControlHistory& OutHistory);
-
-/**
- * Helper function to convert a filename array to relative paths.
- * @param	InFileNames		The filename array
- * @param	InRelativeTo	Path to the WorkspaceRoot
- * @return an array of filenames, transformed into relative paths
- */
-TArray<FString> RelativeFilenames(const TArray<FString>& InFileNames, const FString& InRelativeTo);
 
 /**
  * Helper function for various commands to update cached states.

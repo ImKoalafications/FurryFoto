@@ -1,9 +1,5 @@
-// Copyright (c) 2014-2018 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-//
-// Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
-// or copy at http://opensource.org/licenses/MIT)
+// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
 
-#include "GitSourceControlPrivatePCH.h"
 #include "GitSourceControlCommand.h"
 #include "Modules/ModuleManager.h"
 #include "GitSourceControlModule.h"
@@ -14,15 +10,13 @@ FGitSourceControlCommand::FGitSourceControlCommand(const TSharedRef<class ISourc
 	, OperationCompleteDelegate(InOperationCompleteDelegate)
 	, bExecuteProcessed(0)
 	, bCommandSuccessful(false)
-	, bConnectionDropped(false)
 	, bAutoDelete(true)
 	, Concurrency(EConcurrency::Synchronous)
 {
 	// grab the providers settings here, so we don't access them once the worker thread is launched
 	check(IsInGameThread());
-	const FGitSourceControlModule& GitSourceControl = FModuleManager::GetModuleChecked<FGitSourceControlModule>( "GitSourceControl" );
+	FGitSourceControlModule& GitSourceControl = FModuleManager::LoadModuleChecked<FGitSourceControlModule>( "GitSourceControl" );
 	PathToGitBinary = GitSourceControl.AccessSettings().GetBinaryPath();
-	bUsingGitLfsLocking = GitSourceControl.AccessSettings().IsUsingGitLfsLocking();
 	PathToRepositoryRoot = GitSourceControl.GetProvider().GetPathToRepositoryRoot();
 }
 
@@ -43,4 +37,23 @@ void FGitSourceControlCommand::DoThreadedWork()
 {
 	Concurrency = EConcurrency::Asynchronous;
 	DoWork();
+}
+
+ECommandResult::Type FGitSourceControlCommand::ReturnResults()
+{
+	// Save any messages that have accumulated
+	for (FString& String : InfoMessages)
+	{
+		Operation->AddInfoMessge(FText::FromString(String));
+	}
+	for (FString& String : ErrorMessages)
+	{
+		Operation->AddErrorMessge(FText::FromString(String));
+	}
+
+	// run the completion delegate if we have one bound
+	ECommandResult::Type Result = bCommandSuccessful ? ECommandResult::Succeeded : ECommandResult::Failed;
+	OperationCompleteDelegate.ExecuteIfBound(Operation, Result);
+
+	return Result;
 }
