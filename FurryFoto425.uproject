@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "4.25",
+	"Category": "",
+	"Description": "",
+	"Plugins": [
+		{
+			"Name": "StickyNotes",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/29a0614549e149989ab0808172f864c9"
+		},
+		{
+			"Name": "EasyMultiSave",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/7232621c23174bbbbb64c7bfb6583f6f"
+		},
+		{
+			"Name": "DragonIKPlugin",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/3f3985e9eb40414aaabf645791fa4916"
+		}
+	]
+}
